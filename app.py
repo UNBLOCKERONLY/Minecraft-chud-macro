@@ -34,10 +34,14 @@ from PySide6.QtWidgets import (
 STEP_DELAY = 0.05
 DEBOUNCE_SEC = 0.15
 
-# ANSI virtual keycodes
-KEY_2 = 19
-KEY_Q = 12
-KEY_F = 3
+# macOS ANSI virtual keycodes for rebindable keys
+KEYCODE_MAP = {
+    "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5, "z": 6, "x": 7,
+    "c": 8, "v": 9, "b": 11, "q": 12, "w": 13, "e": 14, "r": 15,
+    "y": 16, "t": 17, "1": 18, "2": 19, "3": 20, "4": 21, "6": 22,
+    "5": 23, "9": 25, "7": 26, "8": 28, "0": 29, "o": 31, "u": 32,
+    "i": 34, "p": 35, "l": 37, "j": 38, "k": 40, "n": 45, "m": 46,
+}
 
 # Palette
 BG = "#0b0d12"
@@ -74,9 +78,10 @@ def left_click() -> None:
 
 
 class HotkeyListener:
-    """Global F-key listener using a Quartz event tap on its own run loop."""
+    """Global hotkey listener using a Quartz event tap on its own run loop."""
 
-    def __init__(self, on_hotkey) -> None:
+    def __init__(self, get_keycode, on_hotkey) -> None:
+        self._get_keycode = get_keycode
         self._on_hotkey = on_hotkey
         self._thread: Optional[threading.Thread] = None
         self._loop = None
@@ -101,7 +106,7 @@ class HotkeyListener:
                 is_repeat = Quartz.CGEventGetIntegerValueField(
                     event, Quartz.kCGKeyboardEventAutorepeat
                 )
-                if keycode == KEY_F and not is_repeat:
+                if keycode == self._get_keycode() and not is_repeat:
                     self._on_hotkey()
             return event
 
@@ -280,6 +285,73 @@ def chip(text: str, accent: bool = False) -> QLabel:
         """
     )
     return label
+
+
+class KeybindChip(QLabel):
+    """Clickable key box: click it, then press a letter or digit to rebind."""
+
+    changed = Signal(str)
+
+    def __init__(self, char: str, parent=None) -> None:
+        super().__init__(char.upper(), parent)
+        self._char = char.lower()
+        self._capturing = False
+        self.setAlignment(Qt.AlignCenter)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setFocusPolicy(Qt.ClickFocus)
+        self._restyle()
+
+    def char(self) -> str:
+        return self._char
+
+    def mousePressEvent(self, _event) -> None:
+        if not self._capturing:
+            self._capturing = True
+            self.setText("press a key…")
+            self._restyle()
+            self.grabKeyboard()
+
+    def keyPressEvent(self, event) -> None:
+        if not self._capturing:
+            super().keyPressEvent(event)
+            return
+        if event.key() == Qt.Key_Escape:
+            self._finish(None)
+            return
+        ch = event.text().lower()
+        if ch in KEYCODE_MAP:
+            self._finish(ch)
+        # other keys (modifiers, symbols) are ignored while capturing
+
+    def focusOutEvent(self, event) -> None:
+        if self._capturing:
+            self._finish(None)
+        super().focusOutEvent(event)
+
+    def _finish(self, ch: Optional[str]) -> None:
+        self.releaseKeyboard()
+        self._capturing = False
+        if ch is not None and ch != self._char:
+            self._char = ch
+            self.changed.emit(ch)
+        self.setText(self._char.upper())
+        self._restyle()
+
+    def _restyle(self) -> None:
+        border = "#f59e0b" if self._capturing else "#3b82f6"
+        self.setStyleSheet(
+            f"""
+            QLabel {{
+                color: {TEXT};
+                background-color: {CHIP_BG};
+                border: 1px solid {border};
+                border-radius: 8px;
+                padding: 4px 12px;
+                font-size: 12px;
+                font-weight: 600;
+            }}
+            """
+        )
 
 
 class SegmentedControl(QWidget):
@@ -466,7 +538,8 @@ class Bus(QObject):
 
 NAV_SECTIONS = [
     ("MACROS", [("crystal", "◈", "Crystal"), ("sword", "⚔", "Sword"),
-                ("mace", "⚒", "Mace"), ("cart", "▣", "Cart"), ("uhc", "◉", "UHC")]),
+                ("mace", "⚒", "Mace"), ("cart", "▣", "Cart"), ("uhc", "◉", "UHC"),
+                ("other", "✧", "Other")]),
     ("TOOLS", [("optimizer", "◎", "Optimizer"), ("profiles", "☰", "Profiles")]),
     ("APP", [("themes", "◐", "Themes"), ("settings", "⚙", "Settings"),
              ("changelog", "≡", "Changelog")]),
@@ -484,6 +557,9 @@ class SolarWindow(QMainWindow):
         self.running = False
         self._listener: Optional[HotkeyListener] = None
         self._last_trigger = 0.0
+        self.hotkey_char = "f"
+        self.key1_char = "2"
+        self.key2_char = "q"
         self.bus = Bus()
         self.bus.status.connect(self._on_status)
 
@@ -585,13 +661,20 @@ class SolarWindow(QMainWindow):
         # Mace — the functional macro
         mace = Page("Mace", "Mace PVP automation")
         self.combo_card = MacroCard(
-            "KC",
-            "Key Click Combo",
-            "Press F to fire: 2 → left click → Q → left click.",
+            "SS",
+            "Stun Slam",
+            "Fires: first key → left click → second key → left click. "
+            "Click a key box to rebind it.",
         )
-        self.combo_card.add_row("Keybind", "F")
-        self.combo_card.add_row("First key", "2")
-        self.combo_card.add_row("Second key", "Q")
+        self.hotkey_chip = KeybindChip(self.hotkey_char)
+        self.hotkey_chip.changed.connect(self._set_hotkey)
+        self.key1_chip = KeybindChip(self.key1_char)
+        self.key1_chip.changed.connect(self._set_key1)
+        self.key2_chip = KeybindChip(self.key2_char)
+        self.key2_chip.changed.connect(self._set_key2)
+        self.combo_card.add_row("Keybind", self.hotkey_chip)
+        self.combo_card.add_row("First key", self.key1_chip)
+        self.combo_card.add_row("Second key", self.key2_chip)
         self.combo_card.add_row("Step delay (ms)", str(int(STEP_DELAY * 1000)))
         self.combo_card.add_status("Inactive")
         self.combo_card.switch.toggled.connect(self._on_toggle)
@@ -607,6 +690,10 @@ class SolarWindow(QMainWindow):
         uhc = Page("UHC", "UHC automation")
         uhc.add_empty_state()
         self._add_page("uhc", uhc)
+
+        other = Page("Other", "Everything else")
+        other.add_empty_state()
+        self._add_page("other", other)
 
         # Tools
         optimizer = Page("Optimizer", "Performance tweaks")
@@ -628,6 +715,7 @@ class SolarWindow(QMainWindow):
 
         changelog = Page("Changelog", "What's new")
         log = QLabel(
+            "v2.1 — Stun Slam rename, editable keybinds, new Other tab.\n"
             "v2.0 — Solar Macros redesign: sidebar UI, tabs, macro cards.\n"
             "v1.0 — First release: F-key combo macro (2 → click → Q → click)."
         )
@@ -661,11 +749,22 @@ class SolarWindow(QMainWindow):
 
     # ------------------------------------------------------------ macro logic
 
+    def _set_hotkey(self, ch: str) -> None:
+        self.hotkey_char = ch
+
+    def _set_key1(self, ch: str) -> None:
+        self.key1_char = ch
+
+    def _set_key2(self, ch: str) -> None:
+        self.key2_char = ch
+
     def _on_toggle(self, checked: bool) -> None:
         self.enabled = checked
         self.nav_items["mace"].setBadge(1 if checked else None)
         if checked:
-            self.combo_card.set_status("Armed — press F", GREEN_SOFT)
+            self.combo_card.set_status(
+                f"Armed — press {self.hotkey_char.upper()}", GREEN_SOFT
+            )
             self._start_listener()
         else:
             self.combo_card.set_status("Inactive", FAINT)
@@ -676,7 +775,9 @@ class SolarWindow(QMainWindow):
 
     def _start_listener(self) -> None:
         self._stop_listener()
-        self._listener = HotkeyListener(self._on_hotkey)
+        self._listener = HotkeyListener(
+            lambda: KEYCODE_MAP[self.hotkey_char], self._on_hotkey
+        )
         self._listener.start()
 
         def check_permission():
@@ -706,13 +807,13 @@ class SolarWindow(QMainWindow):
         self.running = True
         self.bus.status.emit("Running…", BLUE)
         try:
-            press_key(KEY_2)
+            press_key(KEYCODE_MAP[self.key1_char])
             time.sleep(STEP_DELAY)
 
             left_click()
             time.sleep(STEP_DELAY)
 
-            press_key(KEY_Q)
+            press_key(KEYCODE_MAP[self.key2_char])
             time.sleep(STEP_DELAY)
 
             left_click()
@@ -721,7 +822,9 @@ class SolarWindow(QMainWindow):
         finally:
             self.running = False
             if self.enabled:
-                self.bus.status.emit("Armed — press F", GREEN_SOFT)
+                self.bus.status.emit(
+                    f"Armed — press {self.hotkey_char.upper()}", GREEN_SOFT
+                )
             else:
                 self.bus.status.emit("Inactive", FAINT)
 

@@ -1,15 +1,18 @@
 # Solar Macros
 
-A macOS macro suite with a dark sidebar UI: Crystal, Sword, Mace, Cart, and UHC
-tabs plus tools and app settings.
+A macOS macro suite with a dark sidebar UI: Crystal, Sword, Mace, Cart, UHC,
+and Other tabs plus tools and app settings.
 
-The **Mace** tab has the Key Click Combo macro. Flip its switch **On**, then
-press **F** to run:
+The **Mace** tab has the **Stun Slam** macro. Flip its switch **On**, then
+press the keybind (default **F**) to run:
 
-1. Press `2`
+1. Press the first key (default `2`)
 2. Left click
-3. Press `q`
+3. Press the second key (default `q`)
 4. Left click
+
+All three keys are rebindable: click a key box on the card, then press the new
+key you want (Esc cancels).
 
 ## Install on your Mac
 
@@ -67,6 +70,7 @@ This app needs **Accessibility** access so it can send keys and clicks:
 
 1. Launch the app
 2. Open the **Mace** tab
-3. Flip the switch **On** (status becomes "Armed")
-4. Press **F** anywhere to fire the combo
-5. Flip the switch **Off** when you're done
+3. Optionally rebind keys: click a key box, then press the new key
+4. Flip the switch **On** (status becomes "Armed")
+5. Press the keybind anywhere to fire the combo
+6. Flip the switch **Off** when you're done
