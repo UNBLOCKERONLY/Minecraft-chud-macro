@@ -9,17 +9,43 @@ When the switch is **On**, press **F** to run:
 3. Press `q`
 4. Left click
 
-## Run
+## Install on your Mac
+
+You need **macOS** and **Python 3**. Check that Python is installed by opening
+Terminal and running:
 
 ```bash
-cd ~/mac-macro
+python3 --version
+```
+
+Then download and set up the app:
+
+```bash
+git clone https://github.com/UNBLOCKERONLY/Minecraft-chud-macro.git
+cd Minecraft-chud-macro
+git switch cursor/mac-macro-app
+chmod +x run.sh Launch.command
 ./run.sh
 ```
 
-Or manually:
+The first launch creates a private Python environment and installs the required
+packages automatically. Future launches can be started by double-clicking
+`Launch.command` in Finder.
+
+If you do not have Git, open the repository on GitHub, select
+**Code → Download ZIP**, unzip it, open the folder in Terminal, and run:
 
 ```bash
-cd ~/mac-macro
+chmod +x run.sh Launch.command
+./run.sh
+```
+
+If macOS blocks `Launch.command`, Control-click it in Finder, choose **Open**,
+then confirm **Open**.
+
+### Manual setup
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
