@@ -1,8 +1,10 @@
-# mac-macro
+# Solar Macros
 
-A macOS app with a dark neon-style GUI and an on/off switch.
+A macOS macro suite with a dark sidebar UI: Crystal, Sword, Mace, Cart, and UHC
+tabs plus tools and app settings.
 
-When the switch is **On**, press **F** to run:
+The **Mace** tab has the Key Click Combo macro. Flip its switch **On**, then
+press **F** to run:
 
 1. Press `2`
 2. Left click
@@ -24,24 +26,24 @@ Then download and set up the app:
 git clone https://github.com/UNBLOCKERONLY/Minecraft-chud-macro.git
 cd Minecraft-chud-macro
 git switch cursor/mac-macro-app
-chmod +x run.sh Launch.command
+chmod +x run.sh "Solar Macros.command"
 ./run.sh
 ```
 
 The first launch creates a private Python environment and installs the required
 packages automatically. Future launches can be started by double-clicking
-`Launch.command` in Finder.
+`Solar Macros.command` in Finder.
 
 If you do not have Git, open the repository on GitHub, select
 **Code → Download ZIP**, unzip it, open the folder in Terminal, and run:
 
 ```bash
-chmod +x run.sh Launch.command
+chmod +x run.sh "Solar Macros.command"
 ./run.sh
 ```
 
-If macOS blocks `Launch.command`, Control-click it in Finder, choose **Open**,
-then confirm **Open**.
+If macOS blocks `Solar Macros.command`, Control-click it in Finder, choose
+**Open**, then confirm **Open**.
 
 ### Manual setup
 
@@ -64,6 +66,7 @@ This app needs **Accessibility** access so it can send keys and clicks:
 ## How to use
 
 1. Launch the app
-2. Flip the switch **On** (status becomes “Armed”)
-3. Press **F** anywhere to fire the combo
-4. Flip the switch **Off** when you’re done
+2. Open the **Mace** tab
+3. Flip the switch **On** (status becomes "Armed")
+4. Press **F** anywhere to fire the combo
+5. Flip the switch **Off** when you're done
